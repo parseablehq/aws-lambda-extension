@@ -3,9 +3,21 @@ name = "parseable-lambda-extension"
 version = "0.1.0"
 edition = "2021"
 
+# Starting in Rust 1.62 you can use `cargo add` to add dependencies 
+# to your project.
+#
+# If you're using an older Rust version,
+# download cargo-edit(https://github.com/killercup/cargo-edit#installation) 
+# to install the `add` subcommand.
+#
+# Running `cargo add DEPENDENCY_NAME` will
+# add the latest version of a dependency to the list,
+# and it will keep the alphabetic ordering for you.
+
 [dependencies]
-clap = { version = "4.1.4", features = ["derive", "env"] }
-lambda-extension = "0.8.0"
-once_cell = "1.17.0"
-tokio = { version = "1.24.2", features = ["rt-multi-thread"] }
-tokio-macros = "1.8.2"
+lambda-extension = "0.8"
+serde = "1"
+tokio = { version = "1", features = ["macros"] }
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }
+

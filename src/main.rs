@@ -1,33 +1,28 @@
-use clap::Parser;
-use lambda_extension::{service_fn, Error, Extension, LambdaLog, LambdaLogRecord, SharedService};
-use once_cell::sync::Lazy;
+// Copyright (C) 2023 Parseable, Inc.
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+// 
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-static CONFIG: Lazy<Config> = Lazy::new(|| Config::parse());
+use lambda_extension::*;
+use tracing::info;
 
-#[derive(Parser)]
-struct Config {
-    #[arg(env = "PARSEABLE_URL")]
-    url: String,
-    #[arg(env = "PARSEABLE_USERNAME")]
-    username: String,
-    #[arg(env = "PARSEABLE_PASSWORD")]
-    password: String,
-    #[arg(env = "PARSEABLE_STREAM")]
-    stream: Option<String>,
-}
-
-async fn handler(logs: Vec<LambdaLog>) -> Result<(), Error> {
-    for log in logs {
-        match log.record {
-            LambdaLogRecord::Function(_record) => {
-                // do something with the function log record
-                todo!()
+async fn telemetry_extension(events: Vec<LambdaTelemetry>) -> Result<(), Error> {
+    for event in events {
+        match event.record {
+            LambdaTelemetryRecord::Function(record) => {
+                info!(telemetry_type = "function", record = ?record, "received function telemetry");
             }
-            LambdaLogRecord::Extension(_record) => {
-                // do something with the extension log record
-                todo!()
-            }
-            _ => (),
+            _ignore_other => {},
         }
     }
 
@@ -36,12 +31,18 @@ async fn handler(logs: Vec<LambdaLog>) -> Result<(), Error> {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let logs_processor = SharedService::new(service_fn(handler));
+    // The runtime logging can be enabled here by initializing `tracing` with `tracing-subscriber`
+    // While `tracing` is used internally, `log` can be used as well if preferred.
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::INFO)
+        // disabling time is handy because CloudWatch will add the ingestion time.
+        .without_time()
+        .init();
 
+    let telemetry_processor = SharedService::new(service_fn(telemetry_extension));
+    
     Extension::new()
-        .with_logs_processor(logs_processor)
+        .with_telemetry_processor(telemetry_processor)
         .run()
-        .await?;
-
-    Ok(())
+        .await
 }
