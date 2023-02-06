@@ -53,7 +53,6 @@ func Send(functionName string, records []interface{}) {
 		}
 
 		logsBulk, _ := json.Marshal(map[string]interface{}{
-			"privateKey":      privateKey,
 			"applicationName": applicationName,
 			"subsystemName":   subsystemName,
 			"logEntries":      logEntries,

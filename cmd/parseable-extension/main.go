@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/parseablehq/aws-lambda-extension/pkg/extensionsclient"
-	"github.com/parseablehq/aws-lambda-extension/pkg/logsclient"
 	"github.com/parseablehq/aws-lambda-extension/pkg/parseableclient"
 )
 

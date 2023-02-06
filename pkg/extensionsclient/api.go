@@ -1,4 +1,4 @@
-package extensionsapiclient
+package extensionsclient
 
 import (
 	"bytes"

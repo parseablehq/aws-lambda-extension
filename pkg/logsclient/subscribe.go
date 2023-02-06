@@ -1,4 +1,4 @@
-package logsapiclient
+package logsclient
 
 import (
 	"bytes"
