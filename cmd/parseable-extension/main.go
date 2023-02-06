@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/parseablehq/aws-lambda-extension/pkg/extensionsapiclient"
-	"github.com/parseablehq/aws-lambda-extension/pkg/logsapiclient"
-	"github.com/parseablehq/aws-lambda-extension/pkg/parseableapiclient"
+	"github.com/parseablehq/aws-lambda-extension/pkg/extensionsclient"
+	"github.com/parseablehq/aws-lambda-extension/pkg/logsclient"
+	"github.com/parseablehq/aws-lambda-extension/pkg/parseableclient"
 )
 
 var (
@@ -29,7 +29,7 @@ func main() {
 	queue := make(chan interface{})
 
 	log.Println("Initializing Lambda Extension", agentName)
-	agentID, functionName, err := extensionsapiclient.Register(agentName)
+	agentID, functionName, err := extensionsclient.Register(agentName)
 	if err != nil {
 		log.Fatalln("Failed to register Lambda Extension", agentName)
 	}
@@ -37,7 +37,7 @@ func main() {
 	go serve(queue, listenerState)
 	select {
 	case <-listenerState:
-		logsapiclient.Subscribe(agentID.(string), map[string]interface{}{
+		logsclient.Subscribe(agentID.(string), map[string]interface{}{
 			"destination": map[string]interface{}{
 				"protocol": "HTTP",
 				"URI":      fmt.Sprintf("http://sandbox:%d", ReceiverPort),
@@ -52,7 +52,7 @@ func main() {
 
 		for {
 			extensionsapiclient.Next(agentID.(string))
-			parseableapiclient.Send(functionName.(string), (<-queue).([]interface{}))
+			parseableclient.Send(functionName.(string), (<-queue).([]interface{}))
 		}
 	case <-time.After(9 * time.Second):
 		log.Fatalln("HTTP Server time out before starting")

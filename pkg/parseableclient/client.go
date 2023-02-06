@@ -1,4 +1,4 @@
-package parseable
+package parseableclient
 
 import (
 	"bytes"
