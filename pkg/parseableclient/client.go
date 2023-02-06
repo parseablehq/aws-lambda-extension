@@ -1,23 +1,36 @@
+// Copyright 2023 Cloudnatively Pvt. Ltd. All rights reserved.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package parseableclient
 
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strings"
-	"time"
 )
 
 // Send builds logs batches and send to Parseable
 func Send(functionName string, records []interface{}) {
-	url := GetEnv("PARSEABLE_LOG_URL", "")
-	username := GetEnv("PARSEABLE_USERNAME", "")
-	password := GetEnv("PARSEABLE_PASSWORD", "")
+	url := getEnv("PARSEABLE_LOG_URL", "")
+	stream := getEnv("PARSEABLE_LOG_STREAM", functionName)
+	username := getEnv("PARSEABLE_USERNAME", "")
+	password := getEnv("PARSEABLE_PASSWORD", "")
 
-	applicationName := GetEnv("PARSEABLE_APP_NAME", functionName)
-	subsystemName := GetEnv("PARSEABLE_SUB_SYSTEM", "logs")
+	applicationName := getEnv("PARSEABLE_APP_NAME", functionName)
 	logEntries := []map[string]interface{}{}
 
 	if url == "" {
@@ -32,51 +45,40 @@ func Send(functionName string, records []interface{}) {
 
 	if len(records) > 0 {
 		for _, record := range records {
-			var text string
 			record := record.(map[string]interface{})
-			timestamp, _ := time.Parse("2006-01-02T15:04:05.000Z", record["time"].(string))
-
-			switch v := record["record"].(type) {
-			case string:
-				text = string(v)
-			default:
-				jsonText, _ := json.Marshal(v)
-				text = string(jsonText)
-			}
-
-			logEntries = append(logEntries, map[string]interface{}{
-				"timestamp": timestamp.UnixNano() / 1000000,
-				"severity":  GetSeverityLevel(text),
-				"text":      text,
-				"category":  record["type"],
-			})
+			logEntries = append(logEntries, record)
+		}
+		bulkLogs, err := json.Marshal(logEntries)
+		if err != nil {
+			log.Println("Cannot marshal log entry:", err)
 		}
 
-		logsBulk, _ := json.Marshal(map[string]interface{}{
-			"applicationName": applicationName,
-			"subsystemName":   subsystemName,
-			"logEntries":      logEntries,
-		})
-
 		client := &http.Client{}
-		request, _ := http.NewRequest("POST", url, bytes.NewBuffer(logsBulk))
+		request, _ := http.NewRequest("POST", url, bytes.NewBuffer(bulkLogs))
 		request.SetBasicAuth(username, password)
-		request.Close = true
 		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("x-p-meta-application", applicationName)
+		request.Header.Set("x-p-stream", stream)
+		request.Close = true
+
 		response, err := client.Do(request)
 		if err != nil {
 			log.Println("Cannot send logs to Parseable:", err)
 		} else {
 			defer response.Body.Close()
 			if response.StatusCode != 200 {
-				log.Println("Parseable API failed with code:", response.StatusCode)
+				body, err := ioutil.ReadAll(response.Body)
+				if err != nil {
+					log.Println("Failed to read Parseable API response:", err)
+				}
+				log.Printf("Parseable API failed with code: %d and message: %s", response.StatusCode, string(body))
 			}
 		}
 	}
 }
 
-// GetEnv extract environment variable or default value
-func GetEnv(key string, fallback string) string {
+// getEnv extract environment variable or default value
+func getEnv(key string, fallback string) string {
 	value, exists := os.LookupEnv(key)
 	if !exists {
 		return fallback
@@ -84,26 +86,34 @@ func GetEnv(key string, fallback string) string {
 	return value
 }
 
-// GetSeverityLevel extract serverity from log message
-func GetSeverityLevel(message string) int {
-	var severity int
+// getSeverityLevel extract severity from log message
+// func getSeverityLevel(record map[string]interface{}) int {
+// 	var message string
+// 	switch v := record["record"].(type) {
+// 	case string:
+// 		message = string(v)
+// 	default:
+// 		jsonText, _ := json.Marshal(v)
+// 		message = string(jsonText)
+// 	}
 
-	message = strings.ToLower(message)
+// 	var severity int
+// 	message = strings.ToLower(message)
 
-	switch {
-	case strings.Contains(message, "debug"):
-		severity = 1
-	case strings.Contains(message, "verbose"), strings.Contains(message, "trace"):
-		severity = 2
-	case strings.Contains(message, "warning"), strings.Contains(message, "warn"):
-		severity = 4
-	case strings.Contains(message, "error"), strings.Contains(message, "exception"):
-		severity = 5
-	case strings.Contains(message, "fatal"), strings.Contains(message, "critical"):
-		severity = 6
-	default:
-		severity = 3
-	}
+// 	switch {
+// 	case strings.Contains(message, "debug"):
+// 		severity = 1
+// 	case strings.Contains(message, "verbose"), strings.Contains(message, "trace"):
+// 		severity = 2
+// 	case strings.Contains(message, "warning"), strings.Contains(message, "warn"):
+// 		severity = 4
+// 	case strings.Contains(message, "error"), strings.Contains(message, "exception"):
+// 		severity = 5
+// 	case strings.Contains(message, "fatal"), strings.Contains(message, "critical"):
+// 		severity = 6
+// 	default:
+// 		severity = 3
+// 	}
 
-	return severity
-}
+// 	return severity
+// }

@@ -8,3 +8,4 @@ vendor/
 extensions/
 *.env
 *.zip
+metadata.json
