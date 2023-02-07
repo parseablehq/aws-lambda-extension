@@ -27,9 +27,9 @@ The extension's layer version ARN follows the pattern below.
 arn:aws:lambda:<AWS_REGION>:724973952305:layer:parseable-lambda-extension-<ARCH>-<VERSION>:1
 ```
 
-<AWS_REGION> - This must match the region of the Lambda function to which you are adding the extension.
-<ARCH> - x86_64 or arm64.
-<VERSION> - The version of the extension you want to use. Current version is v1.0. For current latest release `v1.0`, use the value `v1-0`.
+* `AWS_REGION` - This must match the region of the Lambda function to which you are adding the extension.
+* `ARCH` - x86_64 or arm64.
+* `VERSION` - The version of the extension you want to use. Current version is v1.0. For current latest release `v1.0`, use the value `v1-0`.
 
 ### Configuration
 
